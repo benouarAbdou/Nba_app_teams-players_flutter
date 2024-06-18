@@ -2,14 +2,14 @@ import 'package:nba/model/player.dart';
 
 class Team {
   final int id;
-  final String abbreviation;
+  final String conference;
   final String name;
   final String imageUrl;
   List<Player> players;
 
   Team({
     required this.id,
-    required this.abbreviation,
+    required this.conference,
     required this.name,
     required this.imageUrl,
     this.players = const [],
@@ -23,7 +23,7 @@ class Team {
     }
     return Team(
       id: json['id'],
-      abbreviation: json['abbreviation'],
+      conference: json['conference'],
       name: json['full_name'],
       imageUrl:
           'https://loodibee.com/wp-content/uploads/nba-${json['full_name'].replaceAll(' ', '-').toLowerCase()}-logo$additive-150x150.png',

@@ -1,7 +1,8 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:country_flags/country_flags.dart'; // Assuming you are using this package for flags
 import 'package:nba/model/player.dart';
 import 'package:nba/model/team.dart';
 
@@ -10,19 +11,26 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: false,
+
+        scaffoldBackgroundColor:
+            const Color(0xFFEDECF1), // Set the background color here
+      ),
       title: 'Flutter Demo',
-      home: MyHomePage(),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -31,10 +39,26 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   Future<List<Team>>? _teamsFuture;
 
+  Map<String, String> _countryCodes = {};
+
   @override
   void initState() {
     super.initState();
     _teamsFuture = getTeams();
+    _loadCountryCodes(); // Load country codes on initialization
+  }
+
+  Future<void> _loadCountryCodes() async {
+    final String response = await rootBundle.loadString('assets/alpha2.json');
+    final Map<String, dynamic> data = json.decode(response);
+    _countryCodes = data.map((key, value) => MapEntry(value, key));
+  }
+
+  String _getCountryCode(String countryName) {
+    if (countryName == "USA") {
+      return _countryCodes["United States"] ?? 'Country not found';
+    }
+    return _countryCodes[countryName] ?? 'Country not found';
   }
 
   Future<List<Team>> getTeams() async {
@@ -74,37 +98,123 @@ class _MyHomePageState extends State<MyHomePage> {
     return players;
   }
 
-  void showPlayersDialog(int teamId) async {
-    List<Player> players = await getPlayers(teamId);
-
+  void showPlayersDialog(BuildContext context, Team team) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Players'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: players.length,
-              itemBuilder: (BuildContext context, int index) {
-                return ListTile(
-                  title: Text(
-                    '${players[index].firstName} ${players[index].lastName}',
+        return FutureBuilder<List<Player>>(
+          future: getPlayers(team.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const AlertDialog(
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.white,
+                title: Text('Players'),
+                content: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: const Text(
+                    'Failed to load players. Please try again later.'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Close'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
                   ),
-                  subtitle: Text(players[index].position),
-                );
-              },
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Close'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+                ],
+              );
+            } else {
+              List<Player> players = snapshot.data!;
+              return AlertDialog(
+                backgroundColor:
+                    Colors.white, // 1. Set background color to white
+                contentPadding: const EdgeInsets.fromLTRB(
+                    16, 8, 16, 0), // 2. Reduce padding
+                title: Text(
+                  team.name, // 4. Use team name as title
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: players.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      return ListTile(
+                        leading: Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: team.conference == 'West'
+                                ? const Color(
+                                    0xFF395DFF) // West conference color
+                                : const Color(
+                                    0xFFFB3C83), // East conference color
+                          ),
+                          child: Center(
+                            child: Text(
+                              players[index].jerseyNumber.toString(),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 14),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          '${players[index].firstName} ${players[index].lastName}',
+                        ),
+                        subtitle: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              players[index].position,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 10,
+                            ),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  CountryFlag.fromCountryCode(
+                                    _getCountryCode(players[index].country),
+                                    height: 15,
+                                    width: 25,
+                                    shape: const RoundedRectangle(4),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    players[index].country,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Close'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            }
+          },
         );
       },
     );
@@ -129,35 +239,63 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemBuilder: (BuildContext context, int index) {
                   return GestureDetector(
                     onTap: () {
-                      showPlayersDialog(teams[index].id);
+                      showPlayersDialog(
+                        context,
+                        teams[index],
+                      );
                     },
-                    child: Padding(
+                    child: Container(
                       padding: const EdgeInsets.all(8.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Image.network(
-                              teams![index].imageUrl,
-                              width: 50,
-                              height: 50,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons
-                                    .error); // Error icon if image fails to load
-                              },
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(teams[index].abbreviation),
-                                Text(teams[index].name),
-                              ],
-                            )
-                          ],
-                        ),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Image.network(
+                            teams![index].imageUrl,
+                            width: 50,
+                            height: 50,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.error);
+                            },
+                          ),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: teams[index].conference == 'West'
+                                      ? const Color(0xFF395DFF)
+                                      : const Color(0xFFFB3C83),
+                                  borderRadius: BorderRadius.circular(20.0),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                child: Text(
+                                  "${teams[index].conference} conference",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 2,
+                              ),
+                              Text(
+                                teams[index].name,
+                                style: const TextStyle(),
+                              ),
+                            ],
+                          )
+                        ],
                       ),
                     ),
                   );
