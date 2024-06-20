@@ -18,12 +18,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'Folks',
         useMaterial3: false,
-
         scaffoldBackgroundColor:
             const Color(0xFFEDECF1), // Set the background color here
       ),
-      title: 'Flutter Demo',
+      title: 'Nba',
       home: const MyHomePage(),
     );
   }
@@ -38,13 +38,19 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   Future<List<Team>>? _teamsFuture;
-
+  List<Team> _filteredTeams = [];
+  String _selectedCategory = 'All';
   Map<String, String> _countryCodes = {};
 
   @override
   void initState() {
     super.initState();
-    _teamsFuture = getTeams();
+    _teamsFuture = getTeams().then((teams) {
+      setState(() {
+        _filteredTeams = teams;
+      });
+      return teams;
+    });
     _loadCountryCodes(); // Load country codes on initialization
   }
 
@@ -71,9 +77,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
     var jsonData = jsonDecode(teamsRequest.body)['data'];
     List<Team> teams = [];
-
+    int i = 0;
     for (var team in jsonData) {
+      if (i == 30) break;
       teams.add(Team.fromJson(team));
+      i++;
     }
 
     return teams;
@@ -143,6 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 content: SizedBox(
                   width: double.maxFinite,
                   child: ListView.builder(
+                    physics: const BouncingScrollPhysics(),
                     shrinkWrap: true,
                     itemCount: players.length,
                     itemBuilder: (BuildContext context, int index) {
@@ -220,91 +229,218 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void _filterTeams(String category, List<Team> teams) {
+    setState(() {
+      _selectedCategory = category;
+      if (category == 'All') {
+        _filteredTeams = teams;
+      } else {
+        _filteredTeams =
+            teams.where((team) => team.conference == category).toList();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: FutureBuilder<List<Team>>(
-          future: _teamsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else {
-              List<Team>? teams = snapshot.data;
-
-              return ListView.builder(
-                itemCount: 30,
-                itemBuilder: (BuildContext context, int index) {
-                  return GestureDetector(
-                    onTap: () {
-                      showPlayersDialog(
-                        context,
-                        teams[index],
-                      );
-                    },
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                SizedBox(
+                  height: 90,
+                  child: CustomPaint(
+                    painter: WavePainter(),
                     child: Container(
-                      padding: const EdgeInsets.all(8.0),
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                      height: 90,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.only(left: 25),
+                  alignment: Alignment.centerLeft,
+                  height: 80,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                          height: 40, child: Image.asset("assets/nba.png")),
+                      const SizedBox(
+                        width: 10,
                       ),
-                      child: Row(
+                      const Text(
+                        'NBA Teams',
+                        style: TextStyle(
+                          fontFamily: 'Folks',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: FutureBuilder<List<Team>>(
+                future: _teamsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else {
+                    List<Team>? teams = snapshot.data;
+
+                    // Avoid unnecessary calls to _filterTeams by only calling it when teams is not null and _filteredTeams is empty
+                    if (teams != null && _filteredTeams.isEmpty) {
+                      _filterTeams(_selectedCategory, teams);
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
                         children: [
-                          Image.network(
-                            teams![index].imageUrl,
-                            width: 50,
-                            height: 50,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(Icons.error);
-                            },
-                          ),
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: teams[index].conference == 'West'
-                                      ? const Color(0xFF395DFF)
-                                      : const Color(0xFFFB3C83),
-                                  borderRadius: BorderRadius.circular(20.0),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                child: Text(
-                                  "${teams[index].conference} conference",
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w300,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: ['All', 'West', 'East'].map((category) {
+                              return GestureDetector(
+                                onTap: () => _filterTeams(category, teams!),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0, vertical: 8.0),
+                                  child: Text(
+                                    category,
+                                    style: TextStyle(
+                                      fontFamily: 'Folks',
+                                      fontSize: _selectedCategory == category
+                                          ? 24
+                                          : 20,
+                                      fontWeight: _selectedCategory == category
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(
-                                height: 2,
-                              ),
-                              Text(
-                                teams[index].name,
-                                style: const TextStyle(),
-                              ),
-                            ],
-                          )
+                              );
+                            }).toList(),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: _filteredTeams.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    showPlayersDialog(
+                                      context,
+                                      _filteredTeams[index],
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Image.network(
+                                          _filteredTeams[index].imageUrl,
+                                          width: 50,
+                                          height: 50,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return const Icon(Icons.error);
+                                          },
+                                        ),
+                                        const SizedBox(
+                                          width: 10,
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: _filteredTeams[index]
+                                                            .conference ==
+                                                        'West'
+                                                    ? const Color(0xFF395DFF)
+                                                    : const Color(0xFFFB3C83),
+                                                borderRadius:
+                                                    BorderRadius.circular(20.0),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4),
+                                              child: Text(
+                                                "${_filteredTeams[index].conference} conference",
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              height: 2,
+                                            ),
+                                            Text(
+                                              _filteredTeams[index].name,
+                                              style:
+                                                  const TextStyle(fontSize: 18),
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  );
+                    );
+                  }
                 },
-              );
-            }
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class WavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    var paint = Paint()
+      ..color = Colors.blueAccent
+      ..style = PaintingStyle.fill;
+
+    var path = Path();
+    path.moveTo(0, size.height * 0.75);
+    path.quadraticBezierTo(
+        size.width / 4, size.height, size.width / 2, size.height * 0.75);
+    path.quadraticBezierTo(
+        size.width * 3 / 4, size.height * 0.5, size.width, size.height * 0.75);
+    path.lineTo(size.width, 0);
+    path.lineTo(0, 0);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
