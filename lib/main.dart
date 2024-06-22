@@ -14,6 +14,7 @@ void main() {
     statusBarIconBrightness:
         Brightness.dark, // Set the status bar icons to dark
   ));
+
   runApp(const MyApp());
 }
 
