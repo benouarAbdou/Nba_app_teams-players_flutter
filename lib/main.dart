@@ -1,12 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart'
+    show SystemChrome, SystemUiMode, SystemUiOverlayStyle, rootBundle;
 import 'package:country_flags/country_flags.dart'; // Assuming you are using this package for flags
 import 'package:nba/model/player.dart';
 import 'package:nba/model/team.dart';
 
 void main() {
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.blueAccent, // Set the status bar color to white
+    statusBarBrightness: Brightness.light, // Set the status bar icons to dark
+    statusBarIconBrightness:
+        Brightness.dark, // Set the status bar icons to dark
+  ));
   runApp(const MyApp());
 }
 
