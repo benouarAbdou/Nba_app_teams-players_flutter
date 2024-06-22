@@ -12,7 +12,7 @@ void main() {
     statusBarColor: Colors.blueAccent, // Set the status bar color to white
     statusBarBrightness: Brightness.light, // Set the status bar icons to dark
     statusBarIconBrightness:
-        Brightness.dark, // Set the status bar icons to dark
+        Brightness.light, // Set the status bar icons to dark
   ));
 
   runApp(const MyApp());
