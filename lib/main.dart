@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart'
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart'
 import 'package:country_flags/country_flags.dart'; // Assuming you are using this package for flags
 import 'package:nba/model/player.dart';
 import 'package:nba/model/team.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -49,6 +51,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Team> _filteredTeams = [];
   String _selectedCategory = 'All';
   Map<String, String> _countryCodes = {};
+  String err = "";
 
   @override
   void initState() {
@@ -68,8 +71,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _countryCodes = data.map((key, value) => MapEntry(value, key));
   }
 
-  String _getCountryCode(String countryName) {
-    if (countryName == "USA") {
+  String _getCountryCode(String? countryName) {
+    if (countryName == "USA" || countryName == null) {
       return _countryCodes["United States"] ?? 'Country not found';
     }
     return _countryCodes[countryName] ?? 'Country not found';
@@ -105,10 +108,25 @@ class _MyHomePageState extends State<MyHomePage> {
     );
 
     var jsonData = jsonDecode(playersRequest.body)['data'];
-    List<Player> players = [];
 
-    for (var player in jsonData) {
-      players.add(Player.fromJson(player));
+    List<Player> players = [];
+    //print(jsonData.toString());
+    setState(() {
+      err = jsonData.toString();
+    });
+
+    for (var playerData in jsonData) {
+      // Check if any required fields are null
+      if (playerData['first_name'] == null ||
+          playerData['last_name'] == null ||
+          playerData['jersey_number'] == null ||
+          playerData['country'] == null) {
+        continue; // Skip this player if any required field is null
+      }
+
+      Player player = Player.fromJson(playerData);
+      players.add(player);
+      print(player.lastName);
     }
 
     return players;
@@ -118,6 +136,7 @@ class _MyHomePageState extends State<MyHomePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        print("id :${team.id}");
         return FutureBuilder<List<Player>>(
           future: getPlayers(team.id),
           builder: (context, snapshot) {
@@ -131,10 +150,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               );
             } else if (snapshot.hasError) {
+              print(snapshot.error);
               return AlertDialog(
-                title: const Text('Error'),
-                content: const Text(
-                    'Failed to load players. Please try again later.'),
+                title: Text('Error : ${snapshot.error}'),
+                content: SingleChildScrollView(child: Text(err)),
                 actions: <Widget>[
                   TextButton(
                     child: const Text('Close'),
@@ -202,15 +221,20 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: Row(
                                 children: [
                                   CountryFlag.fromCountryCode(
-                                    _getCountryCode(players[index].country),
+                                    _getCountryCode(
+                                        players[index].country ?? "USA"),
                                     height: 15,
                                     width: 25,
                                     shape: const RoundedRectangle(4),
                                   ),
                                   const SizedBox(width: 5),
-                                  Text(
-                                    players[index].country,
-                                    style: const TextStyle(fontSize: 14),
+                                  SizedBox(
+                                    width: 100,
+                                    child: Text(
+                                      players[index].country ?? '',
+                                      style: const TextStyle(fontSize: 14),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ],
                               ),

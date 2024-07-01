@@ -3,7 +3,7 @@ class Player {
   final String firstName;
   final String lastName;
   final String position;
-  final String country;
+  final String? country;
   final int jerseyNumber;
 
   Player({
@@ -11,7 +11,7 @@ class Player {
     required this.firstName,
     required this.lastName,
     required this.position,
-    required this.country,
+    this.country,
     required this.jerseyNumber,
   });
 
