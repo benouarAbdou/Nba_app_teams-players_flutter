@@ -1,13 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart'
-    show SystemChrome, SystemUiMode, SystemUiOverlayStyle, rootBundle;
+    show SystemChrome, SystemUiOverlayStyle, rootBundle;
 import 'package:country_flags/country_flags.dart'; // Assuming you are using this package for flags
 import 'package:nba/model/player.dart';
 import 'package:nba/model/team.dart';
-import 'package:path_provider/path_provider.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -196,7 +194,9 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           child: Center(
                             child: Text(
-                              players[index].jerseyNumber.toString(),
+                              players[index].jerseyNumber == -1
+                                  ? ''
+                                  : players[index].jerseyNumber.toString(),
                               style: const TextStyle(
                                   color: Colors.white, fontSize: 14),
                             ),

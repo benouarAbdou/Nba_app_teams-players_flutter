@@ -24,7 +24,15 @@ class Player {
       country: json['country'],
       jerseyNumber: json['jersey_number'] is int
           ? json['jersey_number']
-          : int.parse(json['jersey_number']),
+          : _parseJerseyNumber(json['jersey_number']),
     );
+  }
+
+  static int _parseJerseyNumber(dynamic value) {
+    try {
+      return int.parse(value.toString());
+    } catch (e) {
+      return -1; // Return -1 if parsing fails
+    }
   }
 }
